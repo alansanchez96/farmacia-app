@@ -26,7 +26,7 @@ export default {
   <div
     v-if="show"
     :class="[
-      'fixed top-0 left-0 py-4 px-6 m-6 rounded-md z-20 bg-gray-700 shadow',
+      'fixed top-0 left-0 py-4 px-6 m-6 rounded-md z-50 bg-gray-700 shadow',
       'bg-' + type + '-500 text-gray-100 text-center font-bold',
     ]"
   >

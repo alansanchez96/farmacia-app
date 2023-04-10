@@ -1,12 +1,14 @@
 <script scoped>
 import NotificationToast from "../components/NotificationToast.vue";
 import ModalForm from "../components/ModalForm.vue";
+import PharmacyDetails from "../components/PharmacyDetails.vue";
 
 export default {
   name: "HomeView",
   components: {
     NotificationToast,
     ModalForm,
+    PharmacyDetails,
   },
   data() {
     return {
@@ -22,14 +24,11 @@ export default {
     onPharmacyCreated(pharmacy) {
       this.pharmacies.push(pharmacy);
     },
-    onPharmacyUpdated(pharmacy) {
-      const index = this.pharmacies.findIndex((p) => p.id === pharmacy.id);
-      if (index !== -1) {
-        this.pharmacies.splice(index, 1, pharmacy);
-      }
-    },
     showModal(id = null, index = null) {
       this.$refs.modalForm.openModal(!id ? null : id, this.pharmacies[index]);
+    },
+    viewPharmacy(id, index) {
+      this.$refs.pharmacyDetails.viewPharmacy(id);
     },
     restorePharmacies() {
       this.axios
@@ -38,25 +37,10 @@ export default {
     },
     showNearbyPharmacies() {
       this.axios
-        .get(`/api/pharmacy?lat=${this.latitude}&lon=${this.longitude}`)
+        .get(
+          `/api/pharmacies-nearest?lat=${this.latitude}&lon=${this.longitude}`
+        )
         .then((response) => (this.pharmacies = response.data.data));
-    },
-    confirmDelete(id) {
-      if (confirm("¿Estás seguro de que deseas eliminar este registro?")) {
-        this.deletePharmacy(id);
-      }
-    },
-    deletePharmacy(id) {
-      this.axios
-        .delete(`/api/pharmacy/${id}`)
-        .then((response) => {
-          this.pharmacies.splice(
-            this.pharmacies.findIndex((pharmacy) => pharmacy.id === id),
-            1
-          );
-          this.showSuccessNotification(response.data.msg);
-        })
-        .catch((error) => console.log(error));
     },
     showSuccessNotification(message) {
       this.$refs.notification.showNotification(message, "success");
@@ -94,11 +78,9 @@ export default {
     </div>
     <NotificationToast ref="notification" />
 
-    <ModalForm
-      ref="modalForm"
-      @pharmacy-created="onPharmacyCreated"
-      @pharmacy-updated="onPharmacyUpdated"
-    />
+    <ModalForm ref="modalForm" @pharmacy-created="onPharmacyCreated" />
+
+    <PharmacyDetails ref="pharmacyDetails" />
 
     <h1 class="text-center text-xl font-semibold mb-5">Farmacias</h1>
 
@@ -133,9 +115,6 @@ export default {
             <th scope="col" class="px-6 py-3">
               <span class="sr-only">Editar</span>
             </th>
-            <th scope="col" class="px-6 py-3">
-              <span class="sr-only">Eliminar</span>
-            </th>
           </tr>
         </thead>
         <tbody>
@@ -157,18 +136,9 @@ export default {
               <a
                 href="#"
                 class="font-medium text-blue-600 hover:underline"
-                @click="showModal(pharmacy.id, index)"
+                @click="viewPharmacy(pharmacy.id, index)"
               >
-                Editar
-              </a>
-            </td>
-            <td class="px-6 py-4 text-right">
-              <a
-                href="#asd"
-                class="font-medium text-red-600 hover:underline"
-                @click="confirmDelete(pharmacy.id)"
-              >
-                Eliminar
+                Ver Farmacia
               </a>
             </td>
           </tr>

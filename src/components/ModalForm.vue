@@ -4,7 +4,7 @@ export default {
   components: {
     NotificationToast,
   },
-  emits: ["pharmacy-created", "pharmacy-updated"],
+  emits: ["pharmacy-created"],
   data() {
     return {
       show: false,
@@ -13,25 +13,17 @@ export default {
       address: null,
       latitude: null,
       longitude: null,
+      errors: [],
     };
   },
   methods: {
-    getPharmacies() {
-      this.axios
-        .get(`/api/pharmacies?lat=${this.latitude}&lon=${this.longitude}`)
-        .then((response) => {
-          this.pharmacies = response.data.data;
-        })
-        .catch((error) => {
-          console.log(error);
-        });
-    },
-    openModal(id = null, pharmacy = null) {
+    openModal(pharmacy = null) {
       this.show = true;
-      this.id = id ? id : null;
-      const { name, address } = pharmacy?.attributes || {};
+      const { name, address, latitude, longitude } = pharmacy?.attributes || {};
       this.name = name || null;
       this.address = address || null;
+      this.latitude = latitude || null;
+      this.longitude = longitude || null;
     },
     submit() {
       const data = {
@@ -41,31 +33,18 @@ export default {
         longitude: this.longitude,
       };
 
-      if (
-        (data.name && data.address && data.latitude && data.longitude) !== null
-      ) {
-        if (this.id === null || this.id === 0) {
-          this.axios
-            .post(`/api/pharmacy`, data)
-            .then((response) => {
-              this.showSuccessNotification(response.data.msg);
-              this.$emit("pharmacy-created", response.data.pharmacy);
-            })
-            .catch((error) => console.log(error));
-        } else {
-          this.axios
-            .put(`/api/pharmacy/${this.id}`, data)
-            .then((response) => {
-              this.showSuccessNotification(response.data.msg);
-              this.$emit("pharmacy-updated", response.data.pharmacy);
-            })
-            .catch((error) => console.log(error));
-        }
-
-        this.hide();
-      } else {
-        this.showSuccessNotification("Revisa bien los campos");
-      }
+      this.axios
+        .post(`/api/pharmacies`, data)
+        .then((response) => {
+          this.showSuccessNotification(response.data.message);
+          this.$emit("pharmacy-created", response.data.data);
+          this.hide();
+        })
+        .catch((error) => {
+          this.errors = error.response.data.errors;
+          setTimeout(() => (this.errors = []), 3000);
+          this.showSuccessNotification("Revisa bien los campos");
+        });
     },
     hide() {
       this.show = false;
@@ -73,14 +52,6 @@ export default {
     showSuccessNotification(message) {
       this.$refs.notification.showNotification(message, "success");
     },
-  },
-  mounted() {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition((position) => {
-        this.latitude = position.coords.latitude;
-        this.longitude = position.coords.longitude;
-      });
-    }
   },
 };
 </script>
@@ -91,14 +62,16 @@ export default {
   <div
     v-if="show"
     @click.self="hide()"
-    class="overflow-y-auto overflow-x-hidden flex fixed z-50 justify-center items-center w-full md:inset-0 h-modal md:h-full shadow-xl"
+    class="overflow-y-auto overflow-x-hidden flex fixed z-40 justify-center items-center w-full md:inset-0 h-modal md:h-full shadow-xl"
   >
     <div class="relative p-4 w-full max-w-2xl h-full md:h-auto">
       <div class="relative p-4 bg-white rounded-lg shadow">
         <div
           class="flex justify-between items-center pb-4 mb-4 rounded-t border-b sm:mb-5"
         >
-          <h3 class="text-lg font-semibold text-gray-900">Llena los campos</h3>
+          <h3 class="text-lg font-semibold text-gray-900">
+            Registrar Farmacia
+          </h3>
           <button
             @click="hide()"
             type="button"
@@ -136,6 +109,9 @@ export default {
                 class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5"
                 placeholder=" Ingresa nombre de la farmacia"
               />
+              <p class="text-sm text-red-500 ml-4 mt-1" v-if="errors.name">
+                {{ errors.name[0] }}
+              </p>
             </div>
             <div>
               <label
@@ -150,6 +126,45 @@ export default {
                 class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5"
                 placeholder="Ingresa una direccion"
               />
+              <p class="text-sm text-red-500 ml-4 mt-1" v-if="errors.address">
+                {{ errors.address[0] }}
+              </p>
+            </div>
+            <div>
+              <label
+                for="latitude"
+                class="block mb-2 text-sm font-medium text-gray-900"
+                >Latitud</label
+              >
+              <input
+                type="number"
+                id="latitude"
+                v-model="latitude"
+                step="any"
+                class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5"
+                placeholder="Ingresa una latitude"
+              />
+              <p class="text-sm text-red-500 ml-4 mt-1" v-if="errors.latitude">
+                {{ errors.latitude[0] }}
+              </p>
+            </div>
+            <div>
+              <label
+                for="longitude"
+                class="block mb-2 text-sm font-medium text-gray-900"
+                >Longitud</label
+              >
+              <input
+                type="number"
+                id="longitude"
+                v-model="longitude"
+                step="any"
+                class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5"
+                placeholder="Ingresa una direccion"
+              />
+              <p class="text-sm text-red-500 ml-4 mt-1" v-if="errors.longitude">
+                {{ errors.longitude[0] }}
+              </p>
             </div>
           </div>
           <button
@@ -158,8 +173,6 @@ export default {
           >
             Submit
           </button>
-
-          <p class="mt-5 text-sm text-gray-500">La farmacia tomará tu ubicacion actual por defecto</p>
         </form>
       </div>
     </div>
